@@ -1,0 +1,93 @@
+# Внутри Docker хосты — имена сервисов (db, redis), а не localhost.
+# Это переопределяет значения из .env, которые настроены для локального запуска.
+x-app-env: &app-env
+  env_file: .env
+  environment:
+    POSTGRES_HOST: db
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CELERY_RESULT_BACKEND: redis://redis:6379/1
+
+services:
+
+  # ── Инфраструктура ────────────────────────────────────────────────────────
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Django web ─────────────────────────────────────────────────────────────
+  # entrypoint.sh: migrate → collectstatic → setup_beat → runserver
+  # Health-check гарантирует, что воркеры стартуют после завершения миграций.
+
+  web:
+    build: .
+    <<: *app-env
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  # ── Celery worker ──────────────────────────────────────────────────────────
+  # Запускается только после того, как web прошёл health-check
+  # (= миграции завершены, Django поднят).
+
+  celery_worker:
+    build: .
+    <<: *app-env
+    entrypoint: []
+    command: celery -A config worker -l info -c 4 --without-heartbeat
+    volumes:
+      - .:/app
+    depends_on:
+      web:
+        condition: service_healthy
+
+  # ── Celery Beat ────────────────────────────────────────────────────────────
+
+  celery_beat:
+    build: .
+    <<: *app-env
+    entrypoint: []
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  static_volume:

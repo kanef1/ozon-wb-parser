@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Дашборд цен — {{ profile.user.username }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f0f2f5; }
+    .stat-badge { font-size: .8rem; }
+    .chart-wrap { position: relative; height: 220px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-primary mb-4">
+  <div class="container">
+    <span class="navbar-brand mb-0 h1">Трекер цен — {{ profile.user.username }}</span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Фильтр по дате -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body py-2">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label mb-1 small">Дата с</label>
+          <input type="date" name="from" class="form-control form-control-sm"
+                 value="{{ date_from }}">
+        </div>
+        <div class="col-auto">
+          <label class="form-label mb-1 small">Дата по</label>
+          <input type="date" name="to" class="form-control form-control-sm"
+                 value="{{ date_to }}">
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">Применить</button>
+          <a href="?" class="btn btn-outline-secondary btn-sm ms-1">Сбросить</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Карточки товаров -->
+  {% if charts %}
+    <div class="row g-4">
+      {% for item in charts %}
+        <div class="col-12 col-lg-6">
+          <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div>
+                <span class="badge bg-{% if item.product.marketplace == 'WB' %}danger{% else %}primary{% endif %} me-1">
+                  {{ item.product.marketplace }}
+                </span>
+                <strong>{{ item.product.title|default:item.product.article }}</strong>
+              </div>
+              <a href="{{ item.product.product_url }}" target="_blank"
+                 class="btn btn-sm btn-outline-secondary">Открыть</a>
+            </div>
+            <div class="card-body">
+
+              <!-- Статистика -->
+              <div class="d-flex gap-2 flex-wrap mb-3">
+                <span class="badge bg-primary stat-badge">
+                  Сейчас:
+                  {% if item.current %}{{ item.current }} ₽{% else %}—{% endif %}
+                </span>
+                {% if item.has_data %}
+                  <span class="badge bg-success stat-badge">Мин: {{ item.min_price }} ₽</span>
+                  <span class="badge bg-danger stat-badge">Макс: {{ item.max_price }} ₽</span>
+                  <span class="badge bg-secondary stat-badge">Среднее: {{ item.avg_price }} ₽</span>
+                {% endif %}
+                {% if item.sub.target_price %}
+                  <span class="badge bg-warning text-dark stat-badge">
+                    Порог: {{ item.sub.target_price }} ₽
+                  </span>
+                {% endif %}
+              </div>
+
+              <!-- График -->
+              {% if item.has_data %}
+                <div class="chart-wrap">
+                  <canvas id="chart-{{ item.product.id }}"></canvas>
+                </div>
+              {% else %}
+                <div class="text-center text-muted py-4">
+                  <small>Данных за выбранный период нет</small>
+                </div>
+              {% endif %}
+
+              <!-- Встроенные данные для Chart.js -->
+              {% if item.has_data %}
+              <script>
+                window._chartData = window._chartData || {};
+                window._chartData[{{ item.product.id }}] = {
+                  labels: {{ item.labels_json|safe }},
+                  prices: {{ item.prices_json|safe }}
+                };
+              </script>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="text-center py-5 text-muted">
+      <p>Нет отслеживаемых товаров.</p>
+    </div>
+  {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var data = window._chartData || {};
+    Object.keys(data).forEach(function (productId) {
+      var canvas = document.getElementById("chart-" + productId);
+      if (!canvas) return;
+      var labels = data[productId].labels;
+      var prices = data[productId].prices;
+      var minP = Math.min.apply(null, prices);
+      var maxP = Math.max.apply(null, prices);
+      var pad = (minP === maxP) ? (minP * 0.05 || 50) : 0;
+      new Chart(canvas, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Цена, ₽",
+            data: prices,
+            borderColor: "rgba(13,110,253,0.9)",
+            backgroundColor: "rgba(13,110,253,0.08)",
+            borderWidth: 2,
+            pointRadius: prices.length > 60 ? 0 : 3,
+            tension: 0.3,
+            fill: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) { return ctx.parsed.y.toLocaleString("ru-RU") + " ₽"; }
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { maxTicksLimit: 8, maxRotation: 0 }
+            },
+            y: {
+              suggestedMin: minP - pad,
+              suggestedMax: maxP + pad,
+              ticks: {
+                callback: function(val) { return val.toLocaleString("ru-RU") + " ₽"; }
+              }
+            }
+          }
+        }
+      });
+    });
+  });
+</script>
+</body>
+</html>
