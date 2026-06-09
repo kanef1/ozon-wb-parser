@@ -69,8 +69,11 @@ class WildberriesParser(BaseParser):
     """
 
     def __init__(self, timeout: float = 15.0) -> None:
+        from django.conf import settings
         self._client = curl_requests.Session(impersonate="chrome124")
         self._client.headers.update(_HEADERS)
+        if settings.WB_PROXY_URL:
+            self._client.proxies = {"http": settings.WB_PROXY_URL, "https": settings.WB_PROXY_URL}
         self._timeout = timeout
         self._warmed_up = False
 

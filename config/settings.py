@@ -117,6 +117,10 @@ VK_COMMUNITY_TOKEN = os.environ.get("VK_COMMUNITY_TOKEN", "")
 VK_GROUP_ID = os.environ.get("VK_GROUP_ID", "")
 VK_CONFIRMATION_CODE = os.environ.get("VK_CONFIRMATION_CODE", "")
 
+# Прокси для парсеров (нужен российский IP при деплое за рубежом)
+# Формат: http://user:pass@host:port или socks5://user:pass@host:port
+WB_PROXY_URL = os.environ.get("WB_PROXY_URL", "")
+
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
