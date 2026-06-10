@@ -20,6 +20,7 @@ vk-api==11.9.9
 
 # WSGI-сервер (production)
 gunicorn==23.0.0
+whitenoise==6.8.2
 
 # Утилиты
 Pillow==11.0.0
