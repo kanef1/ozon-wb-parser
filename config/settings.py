@@ -112,6 +112,8 @@ CELERY_BEAT_SCHEDULE = {
 # Приложение
 SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "http://localhost:8000")
 
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", SITE_DOMAIN).split(",")]
+
 # VK
 VK_COMMUNITY_TOKEN = os.environ.get("VK_COMMUNITY_TOKEN", "")
 VK_GROUP_ID = os.environ.get("VK_GROUP_ID", "")
