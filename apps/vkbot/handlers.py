@@ -20,7 +20,7 @@ def _get_vk():
 
 def _send(vk, user_id: int, text: str, keyboard: str | None = None) -> None:
     kwargs: dict = {
-        "user_id": user_id,
+        "peer_id": user_id,
         "message": text,
         "random_id": random.randint(1, 2 ** 31),
     }
