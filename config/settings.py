@@ -11,7 +11,6 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -124,6 +123,3 @@ VK_CONFIRMATION_CODE = os.environ.get("VK_CONFIRMATION_CODE", "")
 # Формат: http://user:pass@host:port или socks5://user:pass@host:port
 WB_PROXY_URL = os.environ.get("WB_PROXY_URL", "")
 
-LOGIN_URL = "/accounts/login/"
-LOGIN_REDIRECT_URL = "/"
-LOGOUT_REDIRECT_URL = "/accounts/login/"
