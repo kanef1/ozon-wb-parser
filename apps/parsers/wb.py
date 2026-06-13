@@ -39,6 +39,11 @@ def _basket_host(article_id: int) -> str:
     return f"https://basket-{_LAST_BASKET + 1 + extra:02d}.wbbasket.ru"
 
 
+def _basket_card_url(article_id: int) -> str:
+    """Вернуть URL карточки товара на basket CDN."""
+    return _basket_urls(article_id)[0]
+
+
 def _basket_urls(article_id: int) -> tuple[str, str]:
     """Вернуть (card_url, price_history_url) для basket-сервера."""
     host = _basket_host(article_id)
